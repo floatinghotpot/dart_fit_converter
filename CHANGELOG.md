@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-01-12
+
+### Added
+- Expose gpx/tcx classes
+- Add integration test
+
 ## [0.1.0] - 2026-01-12
 
 ### Added
