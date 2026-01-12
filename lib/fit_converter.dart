@@ -1,5 +1,8 @@
 library fit_converter;
 
+export 'gpx/gpx.dart';
+export 'tcx/tcx.dart';
+
 import 'dart:typed_data';
 import 'src/fit_to_gpx.dart';
 import 'src/fit_to_tcx.dart';

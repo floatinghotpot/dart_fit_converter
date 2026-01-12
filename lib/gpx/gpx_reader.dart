@@ -106,7 +106,3 @@ class GpxReader {
     return DateTime.tryParse(timeStr);
   }
 }
-
-extension ListFirstOrNull<E> on Iterable<E> {
-  E? get firstOrNull => isEmpty ? null : first;
-}
