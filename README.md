@@ -8,14 +8,15 @@ A powerful Dart library for processing and converting sports activity data. Seam
 ## Features
 
 - 🔄 **Multi-format Conversion**:
-  - **FIT** ➡️ GPX, TCX, CSV/TXT (Brief Summary)
+  - **FIT** ➡️ GPX, TCX, TXT (Brief Summary)
   - **GPX** ➡️ FIT, TCX
   - **TCX** ➡️ FIT, GPX
 - 🛠️ **FIT File Manipulation**:
   - **Merge**: Combine multiple FIT files into a single activity.
   - **Cut**: Precisely trim FIT files using time offsets.
 - 📊 **Quick Summary**: Extract brief activity information (Sport, Distance, Laps, etc.) without full decoding.
-- 💻 **CLI Tools**: Ready-to-use command-line scripts for batch processing.
+- � **Low-Level Inspection**: Examine FIT file structure with detailed message and field information.
+- 💻 **Unified CLI Tool**: Comprehensive command-line interface with 5 powerful commands.
 
 ## Installation
 
@@ -23,7 +24,7 @@ Add this to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  fit_converter: ^0.1.0
+  fit_converter: ^0.5.0
 ```
 
 Then run `dart pub get`.
@@ -33,51 +34,76 @@ Then run `dart pub get`.
 ### Library Usage
 
 ```dart
-import 'package:fit_converter/fit_converter.dart';
 import 'dart:io';
+import 'package:fit_converter/fit_converter.dart' hide File;
 
 void main() async {
   final converter = FitConverter();
   final fitBytes = await File('activity.fit').readAsBytes();
 
   // Convert FIT to GPX
-  final gpxString = await converter.fit_to_gpx(fitBytes);
+  final gpxString = await converter.fitToGpx(fitBytes);
   print(gpxString);
 
+  // Convert FIT to TCX
+  final tcxString = await converter.fitToTcx(fitBytes);
+  print(tcxString);
+
   // Get Brief Info
-  final briefInfo = await converter.fit_to_brief(fitBytes);
+  final briefInfo = await converter.fitToBrief(fitBytes);
   print(briefInfo);
+
+  // Merge multiple FIT files
+  final fitBytes2 = await File('activity2.fit').readAsBytes();
+  final merged = await converter.mergeFit([fitBytes, fitBytes2]);
+  await File('merged.fit').writeAsBytes(merged);
+
+  // Cut FIT file (first 10 minutes)
+  final cut = await converter.cutFit(fitBytes, 0, 600);
+  await File('cut.fit').writeAsBytes(cut);
 }
 ```
 
-### Command-Line Tools
+### Command-Line Tool
 
-The package includes several useful tools in the `tool/` directory:
+The package includes a unified CLI tool `tool/fit.dart` with 5 commands. For detailed documentation, see [tool/README.md](tool/README.md).
 
-#### 1. Convert File
-Convert between any supported formats:
+#### Quick Start
+
 ```bash
-dart tool/convert.dart input.fit output.gpx
+# Show help
+dart tool/fit.dart --help
+
+# Get activity summary
+dart tool/fit.dart brief activity.fit
+
+# Convert FIT to GPX
+dart tool/fit.dart convert activity.fit -o activity.gpx
+
+# Cut first 10 minutes
+dart tool/fit.dart cut activity.fit -o warmup.fit -e 600
+
+# Inspect FIT file structure
+dart tool/fit.dart detail activity.fit --filter 20
+
+# Merge multiple files
+dart tool/fit.dart merge part1.fit part2.fit -o complete.fit
 ```
 
-#### 2. Get Brief Information
-Quickly view activity summary:
-```bash
-dart tool/brief.dart activity.fit
-```
+#### Available Commands
 
-#### 3. Merge FIT Files
-```bash
-dart tool/mergefit.dart merged.fit part1.fit part2.fit part3.fit
-```
+| Command | Description |
+|---------|-------------|
+| `brief` | Show a summary of a FIT, GPX, or TCX file |
+| `convert` | Convert between FIT, GPX, and TCX formats |
+| `cut` | Cut a portion of a FIT file by time offset |
+| `detail` | Show low-level FIT message details |
+| `merge` | Merge multiple FIT files into one |
 
-#### 4. Cut FIT File
-Cut the first 10 minutes (600 seconds) of an activity:
-```bash
-dart tool/cutfit.dart input.fit output.fit 0 600
-```
+For complete documentation with examples and troubleshooting, see [tool/README.md](tool/README.md).
 
 ## Auto-Lap & Distance Logic (GPX to FIT)
+
 When converting from GPX to FIT, `fit_converter` automatically handles:
 - **Distance Calculation**: Uses the Haversine formula to compute distance between track points.
 - **Auto-Lapping**:
@@ -86,7 +112,10 @@ When converting from GPX to FIT, `fit_converter` automatically handles:
   - **Other**: Default laps for other sports.
 
 ## Platform Support
+
 Works on any platform supported by Dart (Windows, macOS, Linux, Web, Android, iOS).
 
 ## License
+
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+

@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.0] - 2026-01-17
+## [0.5.0] - 2026-01-17
 
 ### Added
 - Unified CLI tool `tool/fit.dart` with 5 commands: `brief`, `convert`, `cut`, `detail`, and `merge`
