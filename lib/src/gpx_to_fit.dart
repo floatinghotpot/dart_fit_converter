@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:fit_sdk/fit_sdk.dart';
 import '../gpx/gpx_reader.dart';
 import '../gpx/gpx_models.dart';
-import 'converter.dart';
+import 'format_converter.dart';
 
 class GpxToFitConverter extends SportsDataConverter<String, Uint8List> {
   static const int fitEpochOffset = 631065600000;
@@ -18,15 +18,21 @@ class GpxToFitConverter extends SportsDataConverter<String, Uint8List> {
     final fileId = FileIdMesg();
     fileId.setFieldValue(FileIdMesg.fieldType, File.activity);
     fileId.setFieldValue(
-        FileIdMesg.fieldManufacturer, Manufacturer.development);
+      FileIdMesg.fieldManufacturer,
+      Manufacturer.development,
+    );
     fileId.setFieldValue(FileIdMesg.fieldProduct, 0);
     fileId.setFieldValue(FileIdMesg.fieldSerialNumber, 12345);
     if (gpx.metadata?.time != null) {
       fileId.setFieldValue(
-          FileIdMesg.fieldTimeCreated, _dateTimeToFit(gpx.metadata!.time!));
+        FileIdMesg.fieldTimeCreated,
+        _dateTimeToFit(gpx.metadata!.time!),
+      );
     } else {
       fileId.setFieldValue(
-          FileIdMesg.fieldTimeCreated, _dateTimeToFit(DateTime.now()));
+        FileIdMesg.fieldTimeCreated,
+        _dateTimeToFit(DateTime.now()),
+      );
     }
     _writeMesg(encoder, fileId);
 
@@ -54,7 +60,9 @@ class GpxToFitConverter extends SportsDataConverter<String, Uint8List> {
     // 2. Activity
     final activity = ActivityMesg();
     activity.setFieldValue(
-        ActivityMesg.fieldTimestamp, _dateTimeToFit(endTime));
+      ActivityMesg.fieldTimestamp,
+      _dateTimeToFit(endTime),
+    );
     activity.setFieldValue(ActivityMesg.fieldTotalTimerTime, totalDuration);
     activity.setFieldValue(ActivityMesg.fieldNumSessions, 1);
     activity.setFieldValue(ActivityMesg.fieldType, ActivityType.generic);
@@ -79,20 +87,30 @@ class GpxToFitConverter extends SportsDataConverter<String, Uint8List> {
             prev.latitude != null &&
             prev.longitude != null) {
           totalDistance += _calculateDistance(
-              prev.latitude!, prev.longitude!, pt.latitude!, pt.longitude!);
+            prev.latitude!,
+            prev.longitude!,
+            pt.latitude!,
+            pt.longitude!,
+          );
         }
       }
 
       final record = RecordMesg();
       if (pt.time != null) {
         record.setFieldValue(
-            RecordMesg.fieldTimestamp, _dateTimeToFit(pt.time!));
+          RecordMesg.fieldTimestamp,
+          _dateTimeToFit(pt.time!),
+        );
       }
       if (pt.latitude != null && pt.longitude != null) {
         record.setFieldValue(
-            RecordMesg.fieldPositionLat, _degreesToSemicircles(pt.latitude!));
+          RecordMesg.fieldPositionLat,
+          _degreesToSemicircles(pt.latitude!),
+        );
         record.setFieldValue(
-            RecordMesg.fieldPositionLong, _degreesToSemicircles(pt.longitude!));
+          RecordMesg.fieldPositionLong,
+          _degreesToSemicircles(pt.longitude!),
+        );
       }
       if (pt.elevation != null) {
         record.setFieldValue(RecordMesg.fieldEnhancedAltitude, pt.elevation!);
@@ -116,7 +134,9 @@ class GpxToFitConverter extends SportsDataConverter<String, Uint8List> {
         lap.setFieldValue(LapMesg.fieldMessageIndex, lapIndex++);
         lap.setFieldValue(LapMesg.fieldStartTime, _dateTimeToFit(lapStartTime));
         lap.setFieldValue(
-            LapMesg.fieldTimestamp, _dateTimeToFit(pt.time ?? DateTime.now()));
+          LapMesg.fieldTimestamp,
+          _dateTimeToFit(pt.time ?? DateTime.now()),
+        );
         lap.setFieldValue(LapMesg.fieldTotalDistance, currentLapDist);
         final lapDuration = (pt.time ?? DateTime.now())
             .difference(lapStartTime)
@@ -139,7 +159,9 @@ class GpxToFitConverter extends SportsDataConverter<String, Uint8List> {
       lap.setFieldValue(LapMesg.fieldStartTime, _dateTimeToFit(lapStartTime));
       lap.setFieldValue(LapMesg.fieldTimestamp, _dateTimeToFit(endTime));
       lap.setFieldValue(
-          LapMesg.fieldTotalDistance, totalDistance - lapStartDistance);
+        LapMesg.fieldTotalDistance,
+        totalDistance - lapStartDistance,
+      );
       final lapDuration = endTime.difference(lapStartTime).inSeconds.toDouble();
       lap.setFieldValue(LapMesg.fieldTotalTimerTime, lapDuration);
       lap.setFieldValue(LapMesg.fieldTotalElapsedTime, lapDuration);
@@ -149,7 +171,9 @@ class GpxToFitConverter extends SportsDataConverter<String, Uint8List> {
     // 4. Session (Write after activity and records, containing lap count)
     final session = SessionMesg();
     session.setFieldValue(
-        SessionMesg.fieldStartTime, _dateTimeToFit(startTime));
+      SessionMesg.fieldStartTime,
+      _dateTimeToFit(startTime),
+    );
     session.setFieldValue(SessionMesg.fieldTimestamp, _dateTimeToFit(endTime));
     session.setFieldValue(SessionMesg.fieldTotalTimerTime, totalDuration);
     session.setFieldValue(SessionMesg.fieldTotalElapsedTime, totalDuration);
@@ -199,7 +223,11 @@ class GpxToFitConverter extends SportsDataConverter<String, Uint8List> {
   }
 
   double _calculateDistance(
-      double lat1, double lon1, double lat2, double lon2) {
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const double radius = 6371000; // Earth radius in meters
     final double dLat = _toRadians(lat2 - lat1);
     final double dLon = _toRadians(lon2 - lon1);

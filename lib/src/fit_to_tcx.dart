@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:fit_sdk/fit_sdk.dart';
 import '../tcx/tcx_models.dart';
 import '../tcx/tcx_writer.dart';
-import 'converter.dart';
+import 'format_converter.dart';
 
 class FitToTcxConverter extends SportsDataConverter<Uint8List, String> {
   @override
@@ -53,10 +53,12 @@ class FitToTcxConverter extends SportsDataConverter<Uint8List, String> {
             for (final record in fitMessages.recordMesgs) {
               final ts = record.getTimestamp();
               if (ts != null &&
-                  ts.isAfter(lapStartTime
-                      .subtract(const Duration(milliseconds: 100))) &&
+                  ts.isAfter(
+                    lapStartTime.subtract(const Duration(milliseconds: 100)),
+                  ) &&
                   ts.isBefore(
-                      lapEndTime.add(const Duration(milliseconds: 100)))) {
+                    lapEndTime.add(const Duration(milliseconds: 100)),
+                  )) {
                 final pt = _recordToTcxPoint(record);
                 if (pt != null) {
                   lap.trackPoints.add(pt);

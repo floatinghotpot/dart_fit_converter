@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:fit_sdk/fit_sdk.dart';
-import 'converter.dart';
+
+import 'format_converter.dart';
 
 class FitToBriefConverter extends SportsDataConverter<Uint8List, String> {
   @override
@@ -116,20 +117,49 @@ class FitToBriefConverter extends SportsDataConverter<Uint8List, String> {
     }
     if (s.getTotalDistance() != null) {
       sb.writeln(
-          '  Distance: ${(s.getTotalDistance()! / 1000).toStringAsFixed(2)} km');
+        '  Distance: ${(s.getTotalDistance()! / 1000).toStringAsFixed(2)} km',
+      );
     }
     if (s.getAvgSpeed() != null) {
       sb.writeln(
-          '  Avg Speed: ${(s.getAvgSpeed()! * 3.6).toStringAsFixed(1)} km/h');
+        '  Avg Moving Speed: ${(s.getAvgSpeed()! * 3.6).toStringAsFixed(1)} km/h',
+      );
+    } else if (s.getTotalDistance() != null &&
+        s.getTotalTimerTime() != null &&
+        s.getTotalTimerTime()! > 0) {
+      final calcAvgSpeed =
+          (s.getTotalDistance()! / s.getTotalTimerTime()!) * 3.6;
+      sb.writeln(
+        '  Avg Moving Speed: ${calcAvgSpeed.toStringAsFixed(1)} km/h (calc)',
+      );
     }
+
+    if (s.getMaxSpeed() != null) {
+      sb.writeln(
+        '  Max Speed: ${(s.getMaxSpeed()! * 3.6).toStringAsFixed(1)} km/h',
+      );
+    }
+
     if (s.getAvgHeartRate() != null) {
       sb.writeln('  Avg HR: ${s.getAvgHeartRate()} bpm');
     }
     if (s.getMaxHeartRate() != null) {
       sb.writeln('  Max HR: ${s.getMaxHeartRate()} bpm');
     }
+    if (s.getAvgCadence() != null) {
+      sb.writeln('  Avg Cadence: ${s.getAvgCadence()} rpm');
+    }
     if (s.getTotalCalories() != null) {
       sb.writeln('  Calories: ${s.getTotalCalories()} kcal');
+    }
+    if (s.getAvgPower() != null) {
+      sb.writeln('  Avg Power: ${s.getAvgPower()} W');
+    }
+    if (s.getMaxPower() != null) {
+      sb.writeln('  Max Power: ${s.getMaxPower()} W');
+    }
+    if (s.getTotalAscent() != null) {
+      sb.writeln('  Elev Gain: ${s.getTotalAscent()} m');
     }
     if (m.lapMesgs.isNotEmpty) {
       sb.writeln('  Laps: ${m.lapMesgs.length}');
@@ -170,7 +200,8 @@ class FitToBriefConverter extends SportsDataConverter<Uint8List, String> {
           .map((e) => e.getTotalDistance() ?? 0)
           .reduce((a, b) => a + b);
       sb.writeln(
-          '  Estimated Distance: ${(totalDist / 1000).toStringAsFixed(2)} km');
+        '  Estimated Distance: ${(totalDist / 1000).toStringAsFixed(2)} km',
+      );
     }
   }
 

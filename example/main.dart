@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:fit_converter/fit_converter.dart';
+import 'package:fit_converter/fit_converter.dart' hide File;
 
 void main() async {
   final converter = FitConverter();
@@ -16,22 +16,22 @@ void main() async {
 
   // 2. FIT Brief Info
   print('\n--- FIT Brief Info ---');
-  final brief = await converter.fit_to_brief(fitBytes);
+  final brief = await converter.fitToBrief(fitBytes);
   print(brief);
 
   // 3. FIT to GPX
   print('\n--- FIT to GPX ---');
-  final gpxString = await converter.fit_to_gpx(fitBytes);
+  final gpxString = await converter.fitToGpx(fitBytes);
   print('GPX generated, length: ${gpxString.length}');
 
   // 4. FIT to TCX
   print('\n--- FIT to TCX ---');
-  final tcxString = await converter.fit_to_tcx(fitBytes);
+  final tcxString = await converter.fitToTcx(fitBytes);
   print('TCX generated, length: ${tcxString.length}');
 
   // 5. GPX to TCX
   print('\n--- GPX to TCX ---');
-  final gpxToTcx = await converter.gpx_to_tcx(gpxString);
+  final gpxToTcx = await converter.gpxToTcx(gpxString);
   print('Converted GPX to TCX, length: ${gpxToTcx.length}');
 
   // 6. Merge FIT Files
@@ -39,7 +39,7 @@ void main() async {
   final fitPath2 = 'data/activity_20251129_101802.fit';
   if (File(fitPath2).existsSync()) {
     final fitBytes2 = await File(fitPath2).readAsBytes();
-    final mergedBytes = await converter.merge_fit([fitBytes, fitBytes2]);
+    final mergedBytes = await converter.mergeFit([fitBytes, fitBytes2]);
     print(
         'Merged two FIT files. Original sizes: ${fitBytes.length}, ${fitBytes2.length}. Merged size: ${mergedBytes.length}');
   }
@@ -48,7 +48,7 @@ void main() async {
   print('\n--- Cut FIT File ---');
   final startOffset = 0;
   final endOffset = 600; // 10 minutes
-  final cutBytes = await converter.cut_fit(fitBytes, startOffset, endOffset);
+  final cutBytes = await converter.cutFit(fitBytes, startOffset, endOffset);
   if (cutBytes.isNotEmpty) {
     print('Cut FIT file generated. Cut size: ${cutBytes.length}');
   } else {

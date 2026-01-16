@@ -1,6 +1,6 @@
 name: fit_converter
 description: A Dart package for converting between FIT, GPX, and TCX formats
-version: 0.3.0
+version: 0.4.0
 homepage: https://github.com/floatinghotpot/dart_fit_converter
 repository: https://github.com/floatinghotpot/dart_fit_converter
 issue_tracker: https://github.com/floatinghotpot/dart_fit_converter/issues
@@ -9,9 +9,10 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  fit_sdk: ^0.1.0
   xml: ^6.3.0
   path: ^1.8.3
+  fit_sdk: ^0.2.0
+  args: ^2.7.0
 
 dev_dependencies:
   lints: ^3.0.0

@@ -38,7 +38,9 @@ class FitMerger {
         final newRecord = RecordMesg.fromMesg(record);
         final recordDist = record.getDistance() ?? 0.0;
         newRecord.setFieldValue(
-            RecordMesg.fieldDistance, baseDistanceForThisChild + recordDist);
+          RecordMesg.fieldDistance,
+          baseDistanceForThisChild + recordDist,
+        );
         mergedFitMessages.recordMesgs.add(newRecord);
         totalDistance = baseDistanceForThisChild + recordDist;
       }
@@ -54,35 +56,51 @@ class FitMerger {
         final newLap = LapMesg();
         newLap.setFieldValue(LapMesg.fieldMessageIndex, lapIndex++);
         newLap.setFieldValue(
-            LapMesg.fieldTotalTimerTime, curSession.getTotalTimerTime());
+          LapMesg.fieldTotalTimerTime,
+          curSession.getTotalTimerTime(),
+        );
         newLap.setFieldValue(
-            LapMesg.fieldTotalElapsedTime, curSession.getTotalElapsedTime());
+          LapMesg.fieldTotalElapsedTime,
+          curSession.getTotalElapsedTime(),
+        );
         newLap.setFieldValue(
-            LapMesg.fieldTotalDistance, curSession.getTotalDistance());
+          LapMesg.fieldTotalDistance,
+          curSession.getTotalDistance(),
+        );
 
         final startTs = curSession.getStartTime();
         if (startTs != null) {
           newLap.setFieldValue(LapMesg.fieldStartTime, _dateTimeToFit(startTs));
           final duration = curSession.getTotalElapsedTime() ?? 0.0;
-          newLap.setFieldValue(LapMesg.fieldTimestamp,
-              _dateTimeToFit(startTs.add(Duration(seconds: duration.toInt()))));
+          newLap.setFieldValue(
+            LapMesg.fieldTimestamp,
+            _dateTimeToFit(startTs.add(Duration(seconds: duration.toInt()))),
+          );
         }
         mergedFitMessages.lapMesgs.add(newLap);
       }
 
       // Events
-      mergedFitMessages.eventMesgs
-          .addAll(childMessages.eventMesgs.map((e) => EventMesg.fromMesg(e)));
+      mergedFitMessages.eventMesgs.addAll(
+        childMessages.eventMesgs.map((e) => EventMesg.fromMesg(e)),
+      );
     }
 
     if (mergedFitMessages.sessionMesgs.isNotEmpty) {
       final mergerSession = mergedFitMessages.sessionMesgs.first;
       _fixMergerSession(
-          mergerSession, allSessions, mergedFitMessages.recordMesgs);
+        mergerSession,
+        allSessions,
+        mergedFitMessages.recordMesgs,
+      );
       mergerSession.setFieldValue(
-          SessionMesg.fieldNumLaps, mergedFitMessages.lapMesgs.length);
+        SessionMesg.fieldNumLaps,
+        mergedFitMessages.lapMesgs.length,
+      );
       mergerSession.setFieldValue(
-          SessionMesg.fieldTotalDistance, totalDistance);
+        SessionMesg.fieldTotalDistance,
+        totalDistance,
+      );
 
       if (mergedFitMessages.activityMesgs.isNotEmpty) {
         final activity = mergedFitMessages.activityMesgs.first;
@@ -90,7 +108,9 @@ class FitMerger {
           final lastTs = mergedFitMessages.recordMesgs.last.getTimestamp();
           if (lastTs != null) {
             activity.setFieldValue(
-                ActivityMesg.fieldTimestamp, _dateTimeToFit(lastTs));
+              ActivityMesg.fieldTimestamp,
+              _dateTimeToFit(lastTs),
+            );
           }
         }
       }
@@ -100,7 +120,10 @@ class FitMerger {
   }
 
   Future<Uint8List> cut(
-      Uint8List fitBytes, int startOffset, int endOffset) async {
+    Uint8List fitBytes,
+    int startOffset,
+    int endOffset,
+  ) async {
     final messages = _decode(fitBytes);
 
     // Find base start time from session or first record
@@ -183,10 +206,14 @@ class FitMerger {
 
       if (firstRecordTs != null)
         session.setFieldValue(
-            SessionMesg.fieldStartTime, _dateTimeToFit(firstRecordTs));
+          SessionMesg.fieldStartTime,
+          _dateTimeToFit(firstRecordTs),
+        );
       if (lastRecordTs != null)
         session.setFieldValue(
-            SessionMesg.fieldTimestamp, _dateTimeToFit(lastRecordTs));
+          SessionMesg.fieldTimestamp,
+          _dateTimeToFit(lastRecordTs),
+        );
 
       if (firstRecordTs != null && lastRecordTs != null) {
         final duration =
@@ -198,7 +225,9 @@ class FitMerger {
       final lastDist = (cutMessages.recordMesgs.last.getDistance() ?? 0.0);
       session.setFieldValue(SessionMesg.fieldTotalDistance, lastDist);
       session.setFieldValue(
-          SessionMesg.fieldNumLaps, cutMessages.lapMesgs.length);
+        SessionMesg.fieldNumLaps,
+        cutMessages.lapMesgs.length,
+      );
 
       _fixSessionStats(session, cutMessages.recordMesgs);
     }
@@ -208,7 +237,9 @@ class FitMerger {
       final lastTs = cutMessages.recordMesgs.last.getTimestamp();
       if (lastTs != null)
         activity.setFieldValue(
-            ActivityMesg.fieldTimestamp, _dateTimeToFit(lastTs));
+          ActivityMesg.fieldTimestamp,
+          _dateTimeToFit(lastTs),
+        );
 
       final firstTs = cutMessages.recordMesgs.first.getTimestamp();
       if (firstTs != null && lastTs != null) {
@@ -233,13 +264,100 @@ class FitMerger {
     encoder.open();
 
     final allMesgs = _collectMessages(messages);
+
+    // Track which global message numbers we've seen and assign local numbers
+    final Map<int, int> globalToLocal = {};
+    int nextLocalNum = 0;
+
+    // Track the last definition written for each local number
+    final Map<int, MesgDefinition> lastDefinitions = {};
+
     for (final mesg in allMesgs) {
+      // Clean up the message: remove fields with no values
+      // This is critical because MesgDefinition.fromMesg() will create
+      // definitions for all fields, but Mesg.write() only writes fields with values
+      mesg.fields.removeWhere((field) => field.values.isEmpty);
+
+      final globalNum = mesg.num;
+
+      // Assign a local number if we haven't seen this global number before
+      if (!globalToLocal.containsKey(globalNum)) {
+        if (nextLocalNum >= 16) {
+          // FIT protocol only supports 16 local message numbers (0-15)
+          // Reuse local number 15 for all subsequent types
+          // This allows swapping definition for type 15 frequently
+          globalToLocal[globalNum] = 15;
+        } else {
+          globalToLocal[globalNum] = nextLocalNum++;
+        }
+      }
+
+      final localNum = globalToLocal[globalNum]!;
+      mesg.localNum = localNum;
+
+      // Create definition
       final def = MesgDefinition.fromMesg(mesg);
-      encoder.writeMesgDefinition(def);
-      encoder.writeMesg(mesg);
+      def.localMesgNum = localNum;
+
+      // Only write definition if it's different from the last one for this local number
+      final lastDef = lastDefinitions[localNum];
+      bool needNewDef = false;
+
+      if (lastDef == null) {
+        needNewDef = true;
+      } else {
+        if (!_definitionsEqual(lastDef, def)) {
+          needNewDef = true;
+        }
+      }
+
+      if (needNewDef) {
+        encoder.writeMesgDefinition(def);
+        lastDefinitions[localNum] = def;
+      }
+
+      // Write message - IMPORTANT: pass the definition so Mesg.write() uses it
+      // instead of creating its own
+      encoder.writeMesg(mesg, def);
     }
 
     return encoder.close();
+  }
+
+  bool _definitionsEqual(MesgDefinition a, MesgDefinition b) {
+    if (a.globalMesgNum != b.globalMesgNum) return false;
+
+    final aFields = a.getFields();
+    final bFields = b.getFields();
+
+    if (aFields.length != bFields.length) return false;
+
+    for (int i = 0; i < aFields.length; i++) {
+      if (aFields[i].num != bFields[i].num ||
+          aFields[i].size != bFields[i].size ||
+          aFields[i].type != bFields[i].type) {
+        return false;
+      }
+    }
+
+    // Check developer fields
+    if (a.developerFieldDefinitions.length !=
+        b.developerFieldDefinitions.length) {
+      return false;
+    }
+
+    // Assuming developer fields are in same order for simplicity
+    for (int i = 0; i < a.developerFieldDefinitions.length; i++) {
+      final da = a.developerFieldDefinitions[i];
+      final db = b.developerFieldDefinitions[i];
+      if (da.fieldNum != db.fieldNum ||
+          da.size != db.size ||
+          da.developerDataIndex != db.developerDataIndex) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   List<Mesg> _collectMessages(FitMessages m) {
@@ -273,32 +391,45 @@ class FitMerger {
 
   FitMessages _cloneFitMessages(FitMessages original) {
     final clone = FitMessages();
-    clone.fileIdMesgs
-        .addAll(original.fileIdMesgs.map((e) => FileIdMesg.fromMesg(e)));
+    clone.fileIdMesgs.addAll(
+      original.fileIdMesgs.map((e) => FileIdMesg.fromMesg(e)),
+    );
     clone.fileCreatorMesgs.addAll(
-        original.fileCreatorMesgs.map((e) => FileCreatorMesg.fromMesg(e)));
-    clone.softwareMesgs
-        .addAll(original.softwareMesgs.map((e) => SoftwareMesg.fromMesg(e)));
+      original.fileCreatorMesgs.map((e) => FileCreatorMesg.fromMesg(e)),
+    );
+    clone.softwareMesgs.addAll(
+      original.softwareMesgs.map((e) => SoftwareMesg.fromMesg(e)),
+    );
     clone.deviceInfoMesgs.addAll(
-        original.deviceInfoMesgs.map((e) => DeviceInfoMesg.fromMesg(e)));
+      original.deviceInfoMesgs.map((e) => DeviceInfoMesg.fromMesg(e)),
+    );
     clone.userProfileMesgs.addAll(
-        original.userProfileMesgs.map((e) => UserProfileMesg.fromMesg(e)));
-    clone.sportMesgs
-        .addAll(original.sportMesgs.map((e) => SportMesg.fromMesg(e)));
-    clone.recordMesgs
-        .addAll(original.recordMesgs.map((e) => RecordMesg.fromMesg(e)));
+      original.userProfileMesgs.map((e) => UserProfileMesg.fromMesg(e)),
+    );
+    clone.sportMesgs.addAll(
+      original.sportMesgs.map((e) => SportMesg.fromMesg(e)),
+    );
+    clone.recordMesgs.addAll(
+      original.recordMesgs.map((e) => RecordMesg.fromMesg(e)),
+    );
     clone.lapMesgs.addAll(original.lapMesgs.map((e) => LapMesg.fromMesg(e)));
-    clone.sessionMesgs
-        .addAll(original.sessionMesgs.map((e) => SessionMesg.fromMesg(e)));
-    clone.activityMesgs
-        .addAll(original.activityMesgs.map((e) => ActivityMesg.fromMesg(e)));
-    clone.eventMesgs
-        .addAll(original.eventMesgs.map((e) => EventMesg.fromMesg(e)));
+    clone.sessionMesgs.addAll(
+      original.sessionMesgs.map((e) => SessionMesg.fromMesg(e)),
+    );
+    clone.activityMesgs.addAll(
+      original.activityMesgs.map((e) => ActivityMesg.fromMesg(e)),
+    );
+    clone.eventMesgs.addAll(
+      original.eventMesgs.map((e) => EventMesg.fromMesg(e)),
+    );
     return clone;
   }
 
   void _fixMergerSession(
-      SessionMesg ret, List<SessionMesg> list, List<RecordMesg> records) {
+    SessionMesg ret,
+    List<SessionMesg> list,
+    List<RecordMesg> records,
+  ) {
     double totalTimerTime = 0;
     double totalMovingTime = 0;
     int totalCalories = 0;
@@ -345,7 +476,7 @@ class FitMerger {
         maxHr = math.max(maxHr, hr);
         minHr = math.min(minHr, hr);
       }
-      final speed = r.getSpeed();
+      final speed = r.getEnhancedSpeed() ?? r.getSpeed();
       if (speed != null) {
         sumSpeed += speed;
         countSpeed++;
@@ -366,20 +497,29 @@ class FitMerger {
 
     if (countHr > 0) {
       session.setFieldValue(
-          SessionMesg.fieldAvgHeartRate, (sumHr / countHr).round());
+        SessionMesg.fieldAvgHeartRate,
+        (sumHr / countHr).round(),
+      );
       session.setFieldValue(SessionMesg.fieldMaxHeartRate, maxHr);
       session.setFieldValue(SessionMesg.fieldMinHeartRate, minHr);
     }
     if (countSpeed > 0) {
-      session.setFieldValue(SessionMesg.fieldAvgSpeed, sumSpeed / countSpeed);
+      final avgSpeed = sumSpeed / countSpeed;
+      session.setFieldValue(SessionMesg.fieldAvgSpeed, avgSpeed);
       session.setFieldValue(SessionMesg.fieldMaxSpeed, maxSpeed);
+      session.setFieldValue(SessionMesg.fieldEnhancedAvgSpeed, avgSpeed);
+      session.setFieldValue(SessionMesg.fieldEnhancedMaxSpeed, maxSpeed);
     }
     if (countPower > 0) {
       session.setFieldValue(
-          SessionMesg.fieldAvgPower, (sumPower / countPower).round());
+        SessionMesg.fieldAvgPower,
+        (sumPower / countPower).round(),
+      );
       session.setFieldValue(SessionMesg.fieldMaxPower, maxPower);
     }
     if (minAlt < 10000) {
+      session.setFieldValue(SessionMesg.fieldMinAltitude, minAlt);
+      session.setFieldValue(SessionMesg.fieldMaxAltitude, maxAlt);
       session.setFieldValue(SessionMesg.fieldEnhancedMinAltitude, minAlt);
       session.setFieldValue(SessionMesg.fieldEnhancedMaxAltitude, maxAlt);
     }

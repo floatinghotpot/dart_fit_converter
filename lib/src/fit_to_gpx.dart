@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:fit_sdk/fit_sdk.dart';
 import '../gpx/gpx_models.dart';
 import '../gpx/gpx_writer.dart';
-import 'converter.dart';
+import 'format_converter.dart';
 
 class FitToGpxConverter extends SportsDataConverter<Uint8List, String> {
   @override
@@ -44,16 +44,18 @@ class FitToGpxConverter extends SportsDataConverter<Uint8List, String> {
 
       // 只有带 GPS 坐标的点才加入 GPX
       if (lat != null && lon != null) {
-        segment.points.add(GpxTrackPoint(
-          latitude: _semicirclesToDegrees(lat),
-          longitude: _semicirclesToDegrees(lon),
-          elevation: record.getEnhancedAltitude() ?? record.getAltitude(),
-          time: record.getTimestamp(),
-          heartRate: record.getHeartRate(),
-          cadence: record.getCadence(),
-          temperature: record.getTemperature()?.toDouble(),
-          speed: record.getEnhancedSpeed() ?? record.getSpeed(),
-        ));
+        segment.points.add(
+          GpxTrackPoint(
+            latitude: _semicirclesToDegrees(lat),
+            longitude: _semicirclesToDegrees(lon),
+            elevation: record.getEnhancedAltitude() ?? record.getAltitude(),
+            time: record.getTimestamp(),
+            heartRate: record.getHeartRate(),
+            cadence: record.getCadence(),
+            temperature: record.getTemperature()?.toDouble(),
+            speed: record.getEnhancedSpeed() ?? record.getSpeed(),
+          ),
+        );
       }
     }
 

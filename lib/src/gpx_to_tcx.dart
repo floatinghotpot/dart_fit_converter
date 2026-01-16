@@ -1,7 +1,7 @@
 import '../gpx/gpx_reader.dart';
 import '../tcx/tcx_models.dart';
 import '../tcx/tcx_writer.dart';
-import 'converter.dart';
+import 'format_converter.dart';
 
 class GpxToTcxConverter extends SportsDataConverter<String, String> {
   @override
@@ -19,19 +19,19 @@ class GpxToTcxConverter extends SportsDataConverter<String, String> {
       for (var segment in track.segments) {
         if (segment.points.isEmpty) continue;
 
-        final lap = TcxLap(
-          startTime: segment.points.first.time,
-        );
+        final lap = TcxLap(startTime: segment.points.first.time);
 
         for (var pt in segment.points) {
-          lap.trackPoints.add(TcxTrackPoint(
-            time: pt.time,
-            latitude: pt.latitude,
-            longitude: pt.longitude,
-            altitudeMeters: pt.elevation,
-            heartRateBpm: pt.heartRate,
-            cadence: pt.cadence,
-          ));
+          lap.trackPoints.add(
+            TcxTrackPoint(
+              time: pt.time,
+              latitude: pt.latitude,
+              longitude: pt.longitude,
+              altitudeMeters: pt.elevation,
+              heartRateBpm: pt.heartRate,
+              cadence: pt.cadence,
+            ),
+          );
         }
 
         // Calculate some basic lap stats if points are not empty

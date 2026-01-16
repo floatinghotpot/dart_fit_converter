@@ -1,7 +1,7 @@
 import '../gpx/gpx_models.dart';
 import '../gpx/gpx_writer.dart';
 import '../tcx/tcx_reader.dart';
-import 'converter.dart';
+import 'format_converter.dart';
 
 class TcxToGpxConverter extends SportsDataConverter<String, String> {
   @override
@@ -23,15 +23,17 @@ class TcxToGpxConverter extends SportsDataConverter<String, String> {
       for (var lap in activity.laps) {
         final segment = GpxTrackSegment();
         for (var pt in lap.trackPoints) {
-          segment.points.add(GpxTrackPoint(
-            latitude: pt.latitude,
-            longitude: pt.longitude,
-            elevation: pt.altitudeMeters,
-            time: pt.time,
-            heartRate: pt.heartRateBpm,
-            cadence: pt.cadence,
-            speed: pt.speed,
-          ));
+          segment.points.add(
+            GpxTrackPoint(
+              latitude: pt.latitude,
+              longitude: pt.longitude,
+              elevation: pt.altitudeMeters,
+              time: pt.time,
+              heartRate: pt.heartRateBpm,
+              cadence: pt.cadence,
+              speed: pt.speed,
+            ),
+          );
         }
         if (segment.points.isNotEmpty) {
           track.segments.add(segment);

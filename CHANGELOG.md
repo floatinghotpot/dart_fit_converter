@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-01-17
+
+### Added
+- Unified CLI tool `tool/fit.dart` with 5 commands: `brief`, `convert`, `cut`, `detail`, and `merge`
+- Comprehensive documentation in `tool/README.md` with usage examples and troubleshooting guide
+
+### Changed
+- Consolidated separate CLI tools into a single unified interface
+- Updated example code to use current camelCase API methods
+
+### Fixed
+- Resolved `File` class naming conflicts between `dart:io` and `fit_sdk` package
+- Fixed import issues in tool and example files
+
 ## [0.3.0] - 2026-01-12
 
 ### Added
